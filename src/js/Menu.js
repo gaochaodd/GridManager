@@ -1,111 +1,131 @@
 /*
  * GridManager: 右键菜单
  * */
-import $ from './jTool';
+import { jTool } from './Base';
 import Cache from './Cache';
 import I18n from './I18n';
 import Export from './Export';
 import AjaxPage from './AjaxPage';
-const Menu = {
-	/*
-	 @验证菜单区域: 禁用、开启分页操作
-	 */
-	checkMenuPageAction: function(table){
-		let Settings = Cache.getSettings(table);
-		//右键菜单区上下页限制
-		var gridMenu = $('.grid-menu[grid-master="'+ Settings.gridManagerName +'"]');
-		if(!gridMenu || gridMenu.length === 0){
-			return;
-		}
-		var previousPage = $('[refresh-type="previous"]', gridMenu),
-			nextPage = $('[refresh-type="next"]', gridMenu);
-		if(Settings.pageData.cPage === 1 || Settings.pageData.tPage === 0){
-			previousPage.addClass('disabled');
-		}else{
-			previousPage.removeClass('disabled');
-		}
-		if(Settings.pageData.cPage === Settings.pageData.tPage || Settings.pageData.tPage === 0){
-			nextPage.addClass('disabled');
-		}else{
-			nextPage.removeClass('disabled');
-		}
+import Config from './Config';
+class Menu {
+	// 唯一标识名
+	get keyName() {
+		return 'grid-master';
 	}
-	/*
-	 @绑定右键菜单事件
-	 $.table:table
-	 */
-	,bindRightMenuEvent: function(table){
-		let Settings = Cache.getSettings(table);
-		var tableWarp = $(table).closest('.table-wrap'),
-			tbody = $('tbody', tableWarp);
-		//刷新当前表格
-		var menuHTML = '<div class="grid-menu" grid-master="'+ Settings.gridManagerName +'">';
-		//分页类操作
-		if(Settings.supportAjaxPage){
-			menuHTML+= '<span grid-action="refresh-page" refresh-type="previous">'
-				+ I18n.i18nText("previous-page")
-				+ '<i class="iconfont icon-sanjiao2"></i></span>'
-				+ '<span grid-action="refresh-page" refresh-type="next">'
-				+ I18n.i18nText("next-page")
-				+ '<i class="iconfont icon-sanjiao1"></i></span>';
+
+	init($table) {
+		let settings = Cache.getSettings($table);
+
+		// 创建menu DOM
+		this.createMenuDOM(settings);
+
+		// 绑定右键菜单事件
+		this.bindRightMenuEvent($table, settings);
+	}
+
+	/**
+	 * 创建menu DOM
+	 * @param $table
+	 * @param settings
+     */
+	createMenuDOM(settings) {
+		// menu DOM
+		let menuHTML = `<div class="grid-menu" ${this.keyName}="${settings.gridManagerName}">`;
+
+		// 分页类操作
+		if (settings.supportAjaxPage) {
+			menuHTML += `<span grid-action="refresh-page" refresh-type="previous">
+							${I18n.i18nText(settings, 'menu-previous-page')}
+							<i class="iconfont icon-up"></i>
+						</span>
+						<span grid-action="refresh-page" refresh-type="next">
+							${I18n.i18nText(settings, 'menu-next-page')}
+							<i class="iconfont icon-down"></i>
+						</span>`;
 		}
-		menuHTML    += '<span grid-action="refresh-page" refresh-type="refresh">'
-			+ I18n.i18nText("refresh")
-			+ '<i class="iconfont icon-31shuaxin"></i></span>';
-		//导出类
-		if(Settings.supportExport){
-			menuHTML+='<span class="grid-line"></span>'
-				+ '<span grid-action="export-excel" only-checked="false">'
-				+ I18n.i18nText("save-as-excel")
-				+ '<i class="iconfont icon-baocun"></i></span>'
-				+ '<span grid-action="export-excel" only-checked="true">'
-				+ I18n.i18nText("save-as-excel-for-checked")
-				+ '<i class="iconfont icon-saveas24"></i></span>';
+
+		// 重新加载当前页
+		menuHTML += `<span grid-action="refresh-page" refresh-type="refresh">
+						${I18n.i18nText(settings, 'menu-refresh')}
+						<i class="iconfont icon-refresh"></i>
+					</span>`;
+
+		// 导出
+		if (settings.supportExport) {
+			menuHTML += `<span class="grid-line"></span>
+						<span grid-action="export-excel" only-checked="false">
+							${I18n.i18nText(settings, 'menu-save-as-excel')}
+							<i class="iconfont icon-xls"></i>
+						</span>
+						<span grid-action="export-excel" only-checked="true">
+							${I18n.i18nText(settings, 'menu-save-as-excel-for-checked')}
+							<i class="iconfont icon-xls"></i>
+						</span>`;
 		}
-		//配置类
-		if(Settings.supportConfig){
-			menuHTML+= '<span class="grid-line"></span>'
-				+ '<span grid-action="setting-grid">'
-				+ I18n.i18nText("setting-grid")
-				+ '<i class="iconfont icon-shezhi"></i></span>';
+
+		// 配置
+		if (settings.supportConfig) {
+			menuHTML += `<span class="grid-line"></span>
+						<span grid-action="config-grid">
+							${I18n.i18nText(settings, 'menu-config-grid')}
+							<i class="iconfont icon-config"></i>
+						</span>`;
 		}
-		menuHTML+= '</div>';
-		var _body = $('body');
+		menuHTML += `</div>`;
+		const _body = jTool('body');
 		_body.append(menuHTML);
-		//绑定打开右键菜单栏
-		var menuDOM = $('.grid-menu[grid-master="'+ Settings.gridManagerName +'"]');
+	}
+
+	/**
+	 * 绑定右键菜单事件
+	 * @param $table
+     */
+	bindRightMenuEvent($table, settings) {
+		const _this = this;
+		const tableWarp = $table.closest('.table-wrap');
+
+		const menuDOM = jTool(`.grid-menu[${_this.keyName}="${settings.gridManagerName}"]`);
+
+		const _body = jTool('body');
+
+		// 绑定打开右键菜单栏
 		tableWarp.unbind('contextmenu');
-		tableWarp.bind('contextmenu', function(e){
+		tableWarp.bind('contextmenu', function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			//验证：如果不是tbdoy或者是tbody的子元素，直接跳出
-			if(e.target.nodeName !== 'TBODY' && $(e.target).closest('tbody').length === 0){
+
+			// 验证：如果不是tbdoy或者是tbody的子元素，直接跳出
+			if (e.target.nodeName !== 'TBODY' && jTool(e.target).closest('tbody').length === 0) {
 				return;
 			}
-			//验证：当前是否存在已选中的项
-			var exportExcelOfChecked = $('[grid-action="export-excel"][only-checked="true"]');
-			if($('tbody tr[checked="true"]', $('table[grid-manager="'+ Settings.gridManagerName +'"]')).length === 0){
+
+			// 验证：当前是否存在已选中的项
+			const exportExcelOfChecked = jTool('[grid-action="export-excel"][only-checked="true"]');
+			if (jTool('tbody tr[checked="true"]', jTool(`table[grid-manager="${ settings.gridManagerName }"]`)).length === 0) {
 				exportExcelOfChecked.addClass('disabled');
-			}else{
+			} else {
 				exportExcelOfChecked.removeClass('disabled');
 			}
-			var menuWidth = menuDOM.width(),
-				menuHeight = menuDOM.height(),
-				offsetHeight = document.documentElement.offsetHeight,
-				offsetWidth = document.documentElement.offsetWidth;
-			var top = offsetHeight < e.clientY + menuHeight ? e.clientY - menuHeight : e.clientY;
-			var left = offsetWidth < e.clientX + menuWidth ? e.clientX - menuWidth : e.clientX;
+
+			// 定位
+			const menuWidth = menuDOM.width();
+			const menuHeight = menuDOM.height();
+			const offsetHeight = document.documentElement.offsetHeight;
+			const offsetWidth = document.documentElement.offsetWidth;
+			const top = offsetHeight < e.clientY + menuHeight ? e.clientY - menuHeight : e.clientY;
+			const left = offsetWidth < e.clientX + menuWidth ? e.clientX - menuWidth : e.clientX;
 			menuDOM.css({
-				'top': top + tableWarp.get(0).scrollTop + (document.body.scrollTop || document.documentElement.scrollTop),
-				'left': left + tableWarp.get(0).scrollLeft + (document.body.scrollLeft || document.documentElement.scrollLeft)
+				top: top + tableWarp.get(0).scrollTop + (document.body.scrollTop || document.documentElement.scrollTop),
+				left: left + tableWarp.get(0).scrollLeft + (document.body.scrollLeft || document.documentElement.scrollLeft)
 			});
-			//隐藏非当前展示表格的菜单项
-			$('.grid-menu[grid-master]').hide();
+
+			// 隐藏非当前展示表格的菜单项
+			jTool(`.grid-menu[${_this.keyName}]`).hide();
 			menuDOM.show();
 			_body.off('mousedown.gridMenu');
-			_body.on('mousedown.gridMenu', function(e){
-				var eventSource = $(e.target);
-				if(eventSource.hasClass('.grid-menu') || eventSource.closest('.grid-menu').length === 1){
+			_body.on('mousedown.gridMenu', function (e) {
+				const eventSource = jTool(e.target);
+				if (eventSource.hasClass('.grid-menu') || eventSource.closest('.grid-menu').length === 1) {
 					return;
 				}
 				_body.off('mousedown.gridMenu');
@@ -113,75 +133,143 @@ const Menu = {
 			});
 		});
 
-		//绑定事件：上一页、下一页、重新加载
-		var refreshPage = $('[grid-action="refresh-page"]');
+		// 绑定事件：上一页、下一页、重新加载
+		const refreshPage = jTool('[grid-action="refresh-page"]');
 		refreshPage.unbind('click');
-		refreshPage.bind('click', function(e){
-			if(isDisabled(this, e)){
+		refreshPage.bind('click', function (e) {
+			if (_this.isDisabled(this, e)) {
 				return false;
 			}
-			let _gridMenu = $(this).closest('.grid-menu');
-			let _table = $('table[grid-manager="'+ _gridMenu.attr('grid-master') +'"]');
-			let refreshType = this.getAttribute('refresh-type');
-			let Settings = Cache.getSettings(_table);
-			let cPage = Settings.pageData.cPage;
-			//上一页
-			if(refreshType === 'previous' && Settings.pageData.cPage > 1){
-				cPage = Settings.pageData.cPage - 1;
+			const _gridMenu = jTool(this).closest('.grid-menu');
+			const _table = jTool(`table[grid-manager="${_gridMenu.attr(_this.keyName)}"]`);
+			const refreshType = this.getAttribute('refresh-type');
+			let settings = Cache.getSettings(_table);
+			let cPage = settings.pageData[settings.currentPageKey];
+
+			// 上一页
+			if (refreshType === 'previous' && cPage > 1) {
+				cPage = cPage - 1;
+				// 下一页
+			} else if (refreshType === 'next' && cPage < settings.pageData.tPage) {
+				cPage = cPage + 1;
+				// 重新加载
+			} else if (refreshType === 'refresh') {
+				cPage = cPage;
 			}
-			//下一页
-			else if(refreshType === 'next' && Settings.pageData.cPage < Settings.pageData.tPage){
-				cPage = Settings.pageData.cPage + 1;
-			}
-			//重新加载
-			else if(refreshType === 'refresh'){
-				cPage = Settings.pageData.cPage;
-			}
-			AjaxPage.gotoPage(_table, cPage);
+
+			AjaxPage.gotoPage(_table, settings, cPage);
 			_body.off('mousedown.gridMenu');
 			_gridMenu.hide();
 		});
-		//绑定事件：另存为EXCEL、已选中表格另存为Excel
-		var exportExcel = $('[grid-action="export-excel"]');
-		exportExcel.unbind('click');
-		exportExcel.bind('click', function(e){
-			if(isDisabled(this, e)){
-				return false;
-			}
-			var _gridMenu = $(this).closest('.grid-menu'),
-				_table = $('table[grid-manager="'+_gridMenu.attr('grid-master')+'"]');
-			var onlyChecked = false;
-			if(this.getAttribute('only-checked') === 'true'){
-				onlyChecked = true;
-			}
-			Export.exportGridToXls(_table, undefined, onlyChecked);
-			_body.off('mousedown.gridMenu');
-			_gridMenu.hide();
-		});
-		//绑定事件：配置表
-		var settingGrid = $('[grid-action="setting-grid"]');
-		settingGrid.unbind('click');
-		settingGrid.bind('click', function(e){
-			if(isDisabled(this, e)){
-				return false;
-			}
-			var _gridMenu = $(this).closest('.grid-menu'),
-				_table = $('table[grid-manager="'+_gridMenu.attr('grid-master')+'"]');
-			var configArea = $('.config-area', _table.closest('.table-wrap'));
-			$('.config-action', configArea).trigger('click');
-			_body.off('mousedown.gridMenu');
-			_gridMenu.hide();
-		});
-		//验证当前是否禁用
-		function isDisabled(dom, events){
-			if($(dom).hasClass('disabled')){
-				events.stopPropagation();
-				events.preventDefault();
-				return true;
-			}else{
-				return false;
-			}
+
+		// 绑定事件：另存为EXCEL、已选中表格另存为Excel
+		settings.supportExport && (() => {
+			const exportExcel = jTool('[grid-action="export-excel"]');
+			exportExcel.unbind('click');
+			exportExcel.bind('click', function (e) {
+				if (_this.isDisabled(this, e)) {
+					return false;
+				}
+				const _gridMenu = jTool(this).closest('.grid-menu');
+				const _table = jTool(`table[grid-manager="${_gridMenu.attr(_this.keyName)}"]`);
+				let onlyChecked = false;
+				if (this.getAttribute('only-checked') === 'true') {
+					onlyChecked = true;
+				}
+				Export.__exportGridToXls(_table, undefined, onlyChecked);
+				_body.off('mousedown.gridMenu');
+				_gridMenu.hide();
+			});
+		})();
+
+		// 绑定事件：配置表
+		settings.supportConfig && (() => {
+			const settingGrid = jTool('[grid-action="config-grid"]');
+			settingGrid.unbind('click');
+			settingGrid.bind('click', function (e) {
+				if (_this.isDisabled(this, e)) {
+					return false;
+				}
+				const _gridMenu = jTool(this).closest('.grid-menu');
+				const _table = jTool(`table[grid-manager="${_gridMenu.attr(_this.keyName)}"]`);
+				Config.toggle(_table);
+				_body.off('mousedown.gridMenu');
+				_gridMenu.hide();
+			});
+		})();
+	}
+
+	/**
+	 * 更新菜单区域分页相关操作可用状态
+	 * @param gridManagerName
+	 * @param settings
+	 */
+	updateMenuPageStatus(gridManagerName, settings) {
+		// 右键菜单区上下页限制
+		const gridMenu = jTool(`.grid-menu[${this.keyName}="${gridManagerName}"]`);
+		if (!gridMenu || gridMenu.length === 0) {
+			return;
+		}
+		const previousPage = jTool('[refresh-type="previous"]', gridMenu);
+		const nextPage = jTool('[refresh-type="next"]', gridMenu);
+		const cPage = settings.pageData[settings.currentPageKey];
+		const tPage = settings.pageData.tPage;
+		if (cPage === 1 || tPage === 0) {
+			previousPage.addClass('disabled');
+		} else {
+			previousPage.removeClass('disabled');
+		}
+		if (cPage === tPage || tPage === 0) {
+			nextPage.addClass('disabled');
+		} else {
+			nextPage.removeClass('disabled');
 		}
 	}
-};
-export default Menu;
+
+	/**
+	 * 获取右键菜单中的某项 是为禁用状态. 若为禁用状态清除事件默认行为
+	 * @param dom
+	 * @param events
+	 * @returns {boolean}
+     */
+	isDisabled(dom, events) {
+		if (jTool(dom).hasClass('disabled')) {
+			events.stopPropagation();
+			events.preventDefault();
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * 消毁
+	 * @param $table
+	 */
+	destroy($table) {
+		const tableWarp = $table.closest('.table-wrap');
+		const settings = Cache.getSettings($table);
+		const menuDOM = jTool(`.grid-menu[${this.keyName}="${settings.gridManagerName}"]`);
+		const _body = jTool('body');
+
+		// 清理: 打开右键菜单栏事件
+		tableWarp.unbind('contextmenu');
+
+		// 清理：上一页、下一页、重新加载
+		jTool('[grid-action="refresh-page"]').unbind('click');
+
+		// 清理：另存为EXCEL、已选中表格另存为Excel
+		jTool('[grid-action="export-excel"]').unbind('click');
+
+		// 清理：配置表
+		jTool('[grid-action="config-grid"]').unbind('click');
+
+
+		// 清理：隐藏非当前展示表格的菜单项
+		_body.off('mousedown.gridMenu');
+
+		// 删除DOM节点
+		menuDOM.remove();
+	}
+}
+export default new Menu();

@@ -8,9 +8,13 @@
 			width: 100%;
 			height: 100%;
 			overflow-x:hidden;
-			margin: 0px;
-			padding: 0px;
+			margin: 0;
+			padding: 0;
 			font-size: 12px;
+			box-sizing: border-box;
+		}
+		body{
+			padding: 15px;
 		}
 		h2{
 			font-size:22px;
@@ -22,7 +26,7 @@
 			padding:10px 30px;
 			color:#333;
 			text-indent:2em;
-			margin: 0px;
+			margin: 0;
 		}
 		.demo-tabs{
 			margin-bottom: 18px;
@@ -33,7 +37,7 @@
 			padding: 10px 30px;
 			margin-left: 5px;
 			border: 1px solid #e8e8e8;
-			border-bottom: 0px;
+			border-bottom: 0;
 			background-color: #e8e8e8;
 			margin-bottom: -1px;
 			cursor: pointer;
@@ -48,25 +52,27 @@
 		#demo-iframe{
 			width: 100%;
 			height: calc(100% - 132px);
-			margin: 0px;
-			padding: 0px;
-			border: 0px;
+			margin: 0;
+			padding: 0;
+			border: 0;
 		}
 	</style>
 </head>
 <body>
 	<h2>GridManager:demo演示</h2>
 	<div class="demo-tabs">
-		<span class="demo-ele" data-url="./demo2.html">带搜索功能的动态数据渲染</span>
-		<span class="demo-ele" data-url="./demo1.html">静态数据渲染</span>
-		<span class="demo-ele" data-url="./demo3.html">jquery环境下渲染</span>
-		<span class="demo-ele" data-url="./demo4.html">多表渲染</span>
+		<span class="demo-ele" data-url="./demo1.html">带搜索功能的动态数据</span>
+		<span class="demo-ele" data-url="./demo2.html">简易静态数据</span>
+		<span class="demo-ele" data-url="./demo3.html">多表 I18N</span>
+		<span class="demo-ele" data-url="./demo4.html">通栏样式</span>
+		<span class="demo-ele" data-url="./demo5.html">单选行</span>
+		<span class="demo-ele" data-url="./jquery.html">jquery环境</span>
+		<span class="demo-ele" data-url="./react.html">React环境</span>
+		<span class="demo-ele" data-url="./angular.html">Angular环境</span>
+		<span class="demo-ele" data-url="./vue.html">Vue环境</span>
 	</div>
-	<iframe id="demo-iframe">
-
-	</iframe>
-	<script>
-
+	<iframe id="demo-iframe"></iframe>
+	<script type="text/javascript">
 		[].forEach.call(document.querySelectorAll('.demo-ele'), function(v, i){
 			v.addEventListener('click', function () {
 				document.querySelector('#demo-iframe').src = this.getAttribute('data-url');

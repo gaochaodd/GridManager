@@ -1,105 +1,271 @@
 /*
  * Config: th配置
  * */
-import $ from './jTool';
-import Base from './Base';
+import { jTool, Base } from './Base';
 import Cache from './Cache';
 import Adjust from './Adjust';
-const Config = {
-	html: function () {
-		var html = '<div class="config-area"><span class="config-action"><i class="iconfont icon-31xingdongdian"></i></span><ul class="config-list"></ul></div>';
+import Scroll from './Scroll';
+class Config {
+	/**
+	 * 表格配置区域HTML
+     * @param settings
+	 * @returns {string}
+     */
+	createHtml(settings) {
+		const html = `<div class="config-area">
+						<span class="config-action">
+							<i class="iconfont icon-close"></i>
+						</span>
+						<div class="config-info">${settings.configInfo}</div>
+						<ul class="config-list"></ul>
+					</div>`;
 		return html;
 	}
-	/*
-	 @绑定配置列表事件[隐藏展示列]
-	 $.table: table [jTool object]
-	 */
-	,bindConfigEvent: function(table){
-		let Settings = Cache.getSettings(table);
-		//打开/关闭设置区域
-		var tableWarp = $(table).closest('div.table-wrap');
-		var configAction = $('.config-action', tableWarp);
+
+    /**
+     * 生成配置列HTML
+     * @param thName
+     * @param content
+     * @param isShow
+     * @returns {string}
+     */
+    createColumn(thName, content, isShow) {
+	    return `<li th-name="${thName}"${isShow ? 'class="checked-li"' : ''}>
+                    <label class="gm-checkbox-wrapper">
+                        <span class="gm-radio-checkbox gm-checkbox${isShow ? ' gm-checkbox-checked' : ''}">
+                            <input type="checkbox" class="gm-radio-checkbox-input gm-checkbox-input">
+                            <span class="gm-checkbox-inner"></span>
+                        </span>
+                        ${content}
+                    </label>
+                </li>`;
+    }
+
+	/**
+	 * 初始化配置列
+	 * @param $table
+     */
+	init($table) {
+		this.__bindConfigEvent($table);
+	}
+
+	/**
+	 * 绑定配置列表事件[隐藏展示列]
+	 * @param $table
+     */
+	__bindConfigEvent($table) {
+		const _this = this;
+		// GM容器
+		const tableWarp = $table.closest('div.table-wrap');
+        const configArea = tableWarp.find('.config-area');
+
+        // 关闭设置事件源
+		const configAction = jTool('.config-action', configArea);
+
+		// 事件: 关闭
 		configAction.unbind('click');
-		configAction.bind('click', function(){
-			var _configAction = $(this),		//展示事件源
-				_configArea = _configAction.closest('.config-area');	//设置区域
-			//关闭
-			if(_configArea.css('display') === 'block'){
-				_configArea.hide();
-				return false;
-			}
-			//打开
-			_configArea.show();
-			var _tableWarp = _configAction.closest('.table-wrap'),  //当前事件源所在的div
-				_table	= $('[grid-manager]', _tableWarp),			//对应的table
-				_thList = $('thead th', _table),					//所有的th
-				_trList = $('tbody tr', _table),					//tbody下的tr
-				_td;												//与单个th对应的td
-			$.each(_thList, function(i, v){
-				v = $(v);
-				$.each(_trList, function(i2, v2){
-					_td = $('td', v2).eq(v.index());
-					_td.css('display', v.css('display'));
-				});
-			});
-			//验证当前是否只有一列处于显示状态 并根据结果进行设置是否可以取消显示
-			var checkedLi = $('.checked-li', _configArea);
-			checkedLi.length == 1 ? checkedLi.addClass('no-click') : checkedLi.removeClass('no-click');
+		configAction.bind('click', function () {
+			// 展示事件源
+			const _configAction = jTool(this);
+
+			const $tableWrap = _configAction.closest('.table-wrap');
+            const $table = $tableWrap.find('table[grid-manager]');
+			_this.hide($table);
 		});
-		//设置事件
-		$('.config-list li', tableWarp).unbind('click');
-		$('.config-list li', tableWarp).bind('click', function(){
-			var _only = $(this),		//单个的设置项
-				_thName 		= _only.attr('th-name'),							//单个设置项的thName
-				_checkbox 		= _only.find('input[type="checkbox"]'),			    //事件下的checkbox
-				_tableWarp  	= _only.closest('.table-wrap'), 					//所在的大容器
-				_tableDiv	  	= $('.table-div', _tableWarp), 						//所在的table-div
-				_table	 		= $('[grid-manager]', _tableWarp),				    //所对应的table
-				_th				= $('thead[grid-manager-thead] th[th-name="'+_thName +'"]', _table), 	//所对应的th
-				_checkedList;		//当前处于选中状态的展示项
-			if(_only.hasClass('no-click')){
-				return false;
-			}
+
+		// 事件: 设置
+        configArea.off('click', '.config-list li');
+        configArea.on('click', '.config-list li', function (e) {
+            e.preventDefault();
+
+			// 单个的设置项
+			const _only = jTool(this);
+
+            // 最后一项显示列不允许隐藏
+            if (_only.hasClass('no-click')) {
+                return false;
+            }
+
+            const checkbox = _only.find('.gm-checkbox');
+
+			// 单个设置项的thName
+			const _thName = _only.attr('th-name');
+
+			// 事件下的checkbox
+			const _checkbox = _only.find('input[type="checkbox"]');
+
+			// 所在的大容器
+			const _tableWarp = _only.closest('.table-wrap');
+
+			// 所在的table-div
+			const _tableDiv	= jTool('.table-div', _tableWarp);
+
+			// 所对应的table
+			const _$table = jTool('[grid-manager]', _tableWarp);
+
+            const settings = Cache.getSettings(_$table);
+
+			// thead fackThead
+			const $thead = jTool('thead[grid-manager-thead]', _$table);
+			const $fakeThead = jTool(`thead[${Base.fakeTheadAttr}]`, _$table);
+
+			// 所对应的th fackTh
+			const _th = jTool(`th[th-name="${_thName}"]`, $thead);
+			const _fakeTh = jTool(`th[th-name="${_thName}"]`, $fakeThead);
+
 			_only.closest('.config-list').find('.no-click').removeClass('no-click');
-			var isVisible = !_checkbox.prop('checked');
-			//设置与当前td同列的td是否可见
+			let isVisible = !_checkbox.prop('checked');
+
+            isVisible ? checkbox.addClass('gm-checkbox-checked') : checkbox.removeClass('gm-checkbox-checked');
+
+			// 设置与当前td同列的td是否可见
 			_tableDiv.addClass('config-editing');
-			Base.setAreVisible(_th, isVisible, function(){
+			Base.setAreVisible([_th, _fakeTh], isVisible, () => {
 				_tableDiv.removeClass('config-editing');
 			});
-			//限制最少显示一列
-			_checkedList =  $('.config-area input[type="checkbox"]:checked', _tableWarp);
-			if(_checkedList.length == 1){
-				_checkedList.parent().addClass('no-click');
+
+            // 更新存储信息
+            Cache.update(_$table, settings);
+
+			// 当前处于选中状态的展示项
+			const _checkedList = jTool('.config-area .checked-li', _tableWarp);
+
+			// 限制最少显示一列
+			if (_checkedList.length === 1) {
+				_checkedList.addClass('no-click');
 			}
 
-			//重置调整宽度事件源
-			if(Settings.supportAdjust){
-				Adjust.resetAdjust(_table);
+			// 重置调整宽度事件源
+			if (settings.supportAdjust) {
+				Adjust.resetAdjust(_$table);
 			}
 
-			//重置镜像滚动条的宽度
-			// if(Settings.supportScroll){
-				$('.sa-inner', _tableWarp).width('100%');
-			// }
-			//重置当前可视th的宽度
-			var _visibleTh = $('thead th[th-visible="visible"]', _table);
-			$.each(_visibleTh, function(i, v){
-				v.style.width = 'auto';
-			});
-			//当前th文本所占宽度大于设置的宽度
-			//需要在上一个each执行完后才可以获取到准确的值
-			$.each(_visibleTh, function(i, v){
-				var _realWidthForThText = Base.getTextWidth(v),
-					_thWidth = $(v).width();
-				if(_thWidth < _realWidthForThText){
-					$(v).width(_realWidthForThText);
-				}else{
-					$(v).width(_thWidth);
-				}
-			});
-			Cache.setToLocalStorage(_table);	//缓存信息
+			// 重置镜像滚动条的宽度
+			jTool('.sa-inner', _tableWarp).width('100%');
+
+            // 重置当前可视th的宽度
+            Base.updateThWidth(_$table, settings);
+
+            // 更新存储信息
+            Cache.update(_$table, settings);
+
+			// 处理置顶表头
+            Scroll.update(_$table);
+
+            // 更新最后一项可视列的标识
+            Base.updateVisibleLast($table);
+
+            // 更新滚动轴显示状态
+            Base.updateScrollStatus(_$table);
 		});
 	}
-};
-export default Config;
+
+	/**
+	 * 切换配置区域可视状态
+	 * @param $table
+	 * @returns {boolean}
+	 */
+	toggle($table) {
+		// 设置区域
+		const $configArea = jTool('.config-area', $table.closest('.table-wrap'));
+        const settings = Cache.getSettings($table);
+
+        $configArea.css('display') === 'block' ?  this.hide($table) : this.show($table, settings);
+	}
+
+    /**
+     * 显示配置区域
+     * @param $table
+     * @param settings
+     */
+	show($table, settings) {
+        const $tableWrap = $table.closest('.table-wrap');
+        const $configArea = jTool('.config-area', $tableWrap);
+
+        this.updateConfigList($table, settings);
+        $configArea.show();
+        this.updateConfigListHeight($table);
+    }
+
+    /**
+     * 隐藏配置区域
+     * @param $table
+     */
+    hide($table) {
+        const $tableWrap = $table.closest('.table-wrap');
+        const $configArea = jTool('.config-area', $tableWrap);
+        $configArea.hide();
+    }
+
+    /**
+     * 更新配置区域列表
+     * @param $table
+     * @param settings
+     */
+    updateConfigList($table, settings) {
+        const $tableWrap = $table.closest('.table-wrap');
+        const $configArea = jTool('.config-area', $tableWrap);
+        const $configList = jTool('.config-list', $tableWrap);
+        const $thead = jTool('thead[grid-manager-thead]', $table);
+
+        // 可视列计数
+        let showNum = 0;
+
+        const columnList = [];
+        jTool.each(settings.columnMap, (key, col) => {
+            columnList[col.index] = col;
+        });
+
+        // 重置列的可视操作
+        $configList.html('');
+        jTool.each(columnList, (index, col) => {
+            let {key, isShow, disableCustomize} = col;
+            if (disableCustomize) {
+                return;
+            }
+
+            let onlyText = $thead.find(`th[th-name="${key}"] .th-text`).text();
+            $configList.append(this.createColumn(key, onlyText, isShow));
+            if (isShow) {
+                showNum++;
+            }
+            $configList.find(`li[th-name="${key}"] input[type="checkbox"]`).prop('checked', isShow);
+        });
+
+        // 验证当前是否只有一列处于显示状态, 如果是则禁止取消显示
+        const checkedLi = jTool('.checked-li', $configArea);
+        showNum === 1 ? checkedLi.addClass('no-click') : checkedLi.removeClass('no-click');
+    }
+
+    /**
+     * 更新配置列表区的高度: 用于解决 config-list 无法继承 config-area 设置的 max-height问题
+     * @param $table
+     */
+    updateConfigListHeight($table) {
+        const $tableWrap = $table.closest('.table-wrap');
+        const $configArea = jTool('.config-area', $tableWrap);
+        const configList = $configArea.find('.config-list').get(0);
+        const $configInfo = $configArea.find('.config-info');
+        setTimeout(() => {
+            $configArea.css('visibility', 'hidden');
+            configList.style.maxHeight = (($tableWrap.height() - 90 - 20 - $configInfo.height()) || 0) + 'px';
+            $configArea.css('visibility', 'inherit');
+        });
+    }
+
+    /**
+	 * 消毁
+	 * @param $table
+	 */
+	destroy($table) {
+		const tableWarp = $table.closest('div.table-wrap');
+		const configAction = jTool('.config-action', tableWarp);
+
+		// 清理: 配置列表事件 - 打开或关闭
+		configAction.unbind('click');
+
+		// 清理: 配置列表事件 - 配置
+		jTool('.config-list li', tableWarp).unbind('click');
+	}
+}
+export default new Config();

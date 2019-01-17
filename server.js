@@ -1,50 +1,37 @@
-var http = require("http"),
-    url  = require("url"),
-    path = require("path"),
-    fs   = require("fs");
+const path = require('path');
+const express = require('express');
+const app = express();
+const webpack = require('webpack');
+const webpackConfig = require('./webpack-dev-config');
+const compiler = webpack(webpackConfig);
 
-http.createServer(function (req, res) {
-    var pathname=__dirname + url.parse(req.url).pathname;
-    if (path.extname(pathname)=="") {
-        pathname+="/";
-    }
-    if (pathname.charAt(pathname.length-1)=="/"){
-        pathname+="index.html";
-    }
-    fs.exists(pathname,function(exists){
-        if(exists){
-            switch(path.extname(pathname)){
-                case ".html":
-                    res.writeHead(200, {"Content-Type": "text/html"});
-                    break;
-                case ".js":
-                    res.writeHead(200, {"Content-Type": "text/javascript"});
-                    break;
-                case ".css":
-                    res.writeHead(200, {"Content-Type": "text/css"});
-                    break;
-                case ".gif":
-                    res.writeHead(200, {"Content-Type": "image/gif"});
-                    break;
-                case ".jpg":
-                    res.writeHead(200, {"Content-Type": "image/jpeg"});
-                    break;
-                case ".png":
-                    res.writeHead(200, {"Content-Type": "image/png"});
-                    break;
-                default:
-                    res.writeHead(200, {"Content-Type": "application/octet-stream"});
-            }
+// 配置热启动
+app.use(require('webpack-dev-middleware')(compiler, {
+	noInfo: false,
+	stats: {
+		colors: true,
+		cached: false
+	},
+	publicPath: webpackConfig.output.publicPath
+}));
 
-            fs.readFile(pathname,function (err,data){
-                res.end(data);
-            });
-        } else {
-            res.writeHead(404, {"Content-Type": "text/html"});
-            res.end("<h1>404 Not Found</h1>");
-        }
-    });
+// 配置空路径
+app.use(/\/$/, function (req, res) {
+	res.redirect('/demo/index.html');
+});
 
-}).listen(1987);
+// 配置coverage路径
+app.use(/\/coverage$/, function (req, res) {
+	res.redirect('/coverage/chart/index.html');
+});
 
-console.log("Server running at http://127.0.0.1:1987/");
+// 配置资源路径√
+app.use(express.static(path.join(__dirname, 'src')));
+app.use(express.static(__dirname));
+app.listen(2015, function (err) {
+	if (err) {
+		console.log(err);
+		return;
+	}
+	console.log('started at http://localhost:2015');
+});
